@@ -1,33 +1,40 @@
 import socket
 from _thread import *
-from board import Board
+from board import Board, BOARD_SIZE
+from game import DEFAULT_PLAYING_TIME
 import pickle
 import time
 
 s = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+connections = 0
+games = {0:Board(8, 8)}
+spectartor_ids = [] 
+specs = 0
 
-server = "localhost"
-port = 5555
+#Connection settings
+SERVER = "localhost"
+PORT = 5555
+MAX_CONNECTIONS = 6
 
-server_ip = socket.gethostbyname(server)
+server_ip = socket.gethostbyname(SERVER)
 
+#bind server to port
 try:
-    s.bind((server, port))
+    s.bind((SERVER, PORT))
 
 except socket.error as e:
     print(str(e))
 
+#wait for connections
 s.listen()
 print("[START] Waiting for a connection")
 
-connections = 0
-
-games = {0:Board(8, 8)}
-
-spectartor_ids = [] 
-specs = 0
 
 def read_specs():
+    """
+    Reads spectator ids from a file and stores them in `spectartor_ids` list variable
+    If the file doesn't exist, creates an empty file
+    """
     global spectartor_ids
 
     spectartor_ids = []
@@ -41,39 +48,52 @@ def read_specs():
 
 
 def threaded_client(conn, game, spec=False):
-    global pos, games, currentId, connections, specs
+    """
+    Handle communication with clients
+    
+    Arguments:
+        conn: connection object for the client.
+        game: game identifier.
+        spec: flag indicating if the client is a spectator or not
+    """
+    global pos, games, current_id, connections, specs
+    BUFFER_SIZE = 8192 * 3
+    BUFFER_SIZE2 = 128
 
     if not spec:
         name = None
         bo = games[game]
 
+        # assign peice color
         if connections % 2 == 0:
-            currentId = "w"
+            current_id = "w"
         else:
-            currentId = "b"
+            current_id = "b"
 
-        bo.start_user = currentId
+        bo.start_user = current_id
 
-        # Pickle the object and send it to the server
+        # Pickle the object and send it to the SERVER
         data_string = pickle.dumps(bo)
 
-        if currentId == "b":
+        if current_id == "b":
             bo.ready = True
-            bo.startTime = time.time()
+            bo.start_time = time.time()
 
         conn.send(data_string)
         connections += 1
+
 
         while True:
             if game not in games:
                 break
 
             try:
-                d = conn.recv(8192 * 3)
+                d = conn.recv(BUFFER_SIZE)
                 data = d.decode("utf-8")
                 if not d:
                     break
                 else:
+                    #player selecting piece
                     if data.count("select") > 0:
                         all = data.split(" ")
                         col = int(all[1])
@@ -81,6 +101,7 @@ def threaded_client(conn, game, spec=False):
                         color = all[3]
                         bo.select(col, row, color)
 
+                    #check for winner
                     if data == "winner b":
                         bo.winner = "b"
                         print("[GAME] Player b won in game", game)
@@ -88,32 +109,36 @@ def threaded_client(conn, game, spec=False):
                         bo.winner = "w"
                         print("[GAME] Player w won in game", game)
 
+                    #update valid moves
                     if data == "update moves":
                         bo.update_moves()
 
+                    #set player names
                     if data.count("name") == 1:
                         name = data.split(" ")[1]
-                        if currentId == "b":
-                            bo.p2Name = name
-                        elif currentId == "w":
-                            bo.p1Name = name
+                        if current_id == "b":
+                            bo.p2_name = name
+                        elif current_id == "w":
+                            bo.p1_name = name
 
-                    #print("Recieved board from", currentId, "in game", game)
+                    #print("Recieved board from", current_id, "in game", game)
 
+                    #Adjust the player timers
                     if bo.ready:
                         if bo.turn == "w":
-                            bo.time1 = 900 - (time.time() - bo.startTime) - bo.storedTime1
+                            bo.time1 = DEFAULT_PLAYING_TIME - (time.time() - bo.start_time) - bo.stored_time_one
                         else:
-                            bo.time2 = 900 - (time.time() - bo.startTime) - bo.storedTime2
+                            bo.time2 = DEFAULT_PLAYING_TIME - (time.time() - bo.start_time) - bo.stored_time_two
 
-                    sendData = pickle.dumps(bo)
-                    #print("Sending board to player", currentId, "in game", game)
+                    send_data = pickle.dumps(bo)
+                    #print("Sending board to player", current_id, "in game", game)
 
-                conn.sendall(sendData)
+                conn.sendall(send_data)
 
             except Exception as e:
                 print(e)
         
+        #remove connection and delete game
         connections -= 1
         try:
             del games[game]
@@ -124,6 +149,7 @@ def threaded_client(conn, game, spec=False):
         conn.close()
 
     else:
+        #update available games for viewing and send to spectator
         available_games = list(games.keys())
         game_ind = 0
         bo = games[available_games[game_ind]]
@@ -135,7 +161,8 @@ def threaded_client(conn, game, spec=False):
             available_games = list(games.keys())
             bo = games[available_games[game_ind]]
             try:
-                d = conn.recv(128)
+                #recieve and handle spectator data
+                d = conn.recv(BUFFER_SIZE2)
                 data = d.decode("utf-8")
                 if not d:
                     break
@@ -156,8 +183,9 @@ def threaded_client(conn, game, spec=False):
                     except:
                         print("[ERROR] Invalid Game Recieved from Spectator")
 
-                    sendData = pickle.dumps(bo)
-                    conn.sendall(sendData)
+                    #send current game data to spectator
+                    send_data = pickle.dumps(bo)
+                    conn.sendall(send_data)
 
             except Exception as e:
                 print(e)
@@ -169,23 +197,26 @@ def threaded_client(conn, game, spec=False):
 
 while True:
     read_specs()
-    if connections < 6:
+    #check for space for new connections
+    if connections < MAX_CONNECTIONS:
         conn, addr = s.accept()
         spec = False
         g = -1
         print("[CONNECT] New connection")
 
+        #find available game
         for game in games.keys():
             if games[game].ready == False:
                 g=game
 
+        #create new game if none are available
         if g == -1:
             try:
                 g = list(games.keys())[-1]+1
-                games[g] = Board(8,8)
+                games[g] = Board(BOARD_SIZE, BOARD_SIZE)
             except:
                 g = 0
-                games[g] = Board(8,8)
+                games[g] = Board(BOARD_SIZE, BOARD_SIZE)
 
         '''if addr[0] in spectartor_ids and specs == 0:
             spec = True

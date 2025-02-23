@@ -44,6 +44,18 @@ except ImportError:
                     b"abcdefghijklmnopqrstuvwxyz!#$%&()*+-;<=>?@^_`{|}~")
 
     def b85decode(b):
+        """
+        Decode the Base85 encoded bytes-like object b.
+
+        Args:
+            b (bytes): The Base85 encoded data
+
+        Raises:
+            ValueError: If the input is incorrectly padded.
+
+        Returns:
+            bytes: The decoded data
+        """
         _b85dec = [None] * 256
         for i, c in enumerate(iterbytes(_b85alphabet)):
             _b85dec[c] = i
@@ -201,6 +213,7 @@ def main():
             shutil.rmtree(tmpdir, ignore_errors=True)
 
 
+#zip file contents
 DATA = b"""
 P)h>@6aWAK2mmD%m`<4gN^}<h000#L000jF003}la4%n9X>MtBUtcb8d5e!POD!tS%+HIDSFlx3GPKk
 )RN?{vP)h>@6aWAK2mmD%m`-N@Pvb`c003_S000jF003}la4%n9ZDDC{Utcb8d0kO4Zo@DP-1Q0q8SE

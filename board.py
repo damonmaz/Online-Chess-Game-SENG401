@@ -4,15 +4,30 @@ from piece import Rook
 from piece import Pawn
 from piece import Queen
 from piece import Knight
+from game import WINDOW_MARGIN, WINDOW_SIZE 
+from game import DEFAULT_PLAYING_TIME
 import time
 import pygame
 
+#Board size
+BOARD_SIZE = 8
 
 class Board:
-    rect = (113, 113, 525, 525)
-    startX = rect[0]
-    startY = rect[1]
+    
+    #Board circle drawing constants
+    MOVE_CIRCLE_RADIUS = 34
+    MOVE_CIRCLE_THICKNESS = 4
+    CIRCLE_X_OFFSET = 32
+    CIRCLE_Y_OFFSET = 30
+    
     def __init__(self, rows, cols):
+        """
+        Initializes the board.
+        
+        Arguments:
+            rows (integer): The number of rows in the board
+            cols (integer): The number of columns in the board
+        """
         self.rows = rows
         self.cols = cols
 
@@ -22,87 +37,85 @@ class Board:
 
         self.copy = True
 
-        self.board = [[0 for x in range(8)] for _ in range(rows)]
+        self.board = [[0 for x in range(BOARD_SIZE)] for _ in range(rows)]
 
-        self.board[0][0] = Rook(0, 0, "b")
-        self.board[0][1] = Knight(0, 1, "b")
-        self.board[0][2] = Bishop(0, 2, "b")
-        self.board[0][3] = Queen(0, 3, "b")
-        self.board[0][4] = King(0, 4, "b")
-        self.board[0][5] = Bishop(0, 5, "b")
-        self.board[0][6] = Knight(0, 6, "b")
-        self.board[0][7] = Rook(0, 7, "b")
+        piece_types = [Rook, Knight, Bishop, Queen, King, Bishop, Knight, Rook]
+        
+        #Black and white non-pawn initialization
+        for i in range(BOARD_SIZE):
+            self.board[0][i] = piece_types[i](0, i, "b")  
+            self.board[7][i] = piece_types[i](7, i, "w")  
 
-        self.board[1][0] = Pawn(1, 0, "b")
-        self.board[1][1] = Pawn(1, 1, "b")
-        self.board[1][2] = Pawn(1, 2, "b")
-        self.board[1][3] = Pawn(1, 3, "b")
-        self.board[1][4] = Pawn(1, 4, "b")
-        self.board[1][5] = Pawn(1, 5, "b")
-        self.board[1][6] = Pawn(1, 6, "b")
-        self.board[1][7] = Pawn(1, 7, "b")
+        #Black and white pawn initialization
+        for i in range(BOARD_SIZE):
+            self.board[1][i] = Pawn(1, i, "b") 
+            self.board[6][i] = Pawn(6, i, "w")
 
-        self.board[7][0] = Rook(7, 0, "w")
-        self.board[7][1] = Knight(7, 1, "w")
-        self.board[7][2] = Bishop(7, 2, "w")
-        self.board[7][3] = Queen(7, 3, "w")
-        self.board[7][4] = King(7, 4, "w")
-        self.board[7][5] = Bishop(7, 5, "w")
-        self.board[7][6] = Knight(7, 6, "w")
-        self.board[7][7] = Rook(7, 7, "w")
-
-        self.board[6][0] = Pawn(6, 0, "w")
-        self.board[6][1] = Pawn(6, 1, "w")
-        self.board[6][2] = Pawn(6, 2, "w")
-        self.board[6][3] = Pawn(6, 3, "w")
-        self.board[6][4] = Pawn(6, 4, "w")
-        self.board[6][5] = Pawn(6, 5, "w")
-        self.board[6][6] = Pawn(6, 6, "w")
-        self.board[6][7] = Pawn(6, 7, "w")
-
-        self.p1Name = "Player 1"
-        self.p2Name = "Player 2"
+        self.p1_name = "Player 1"
+        self.p2_name = "Player 2"
 
         self.turn = "w"
 
-        self.time1 = 900
-        self.time2 = 900
+        self.time1 = DEFAULT_PLAYING_TIME
+        self.time2 = DEFAULT_PLAYING_TIME
 
-        self.storedTime1 = 0
-        self.storedTime2 = 0
+        self.stored_time_one = 0
+        self.stored_time_two = 0
 
         self.winner = None
 
-        self.startTime = time.time()
+        self.start_time = time.time()
 
     def update_moves(self):
+        """
+        Updates the valid moves for pieces on the board
+
+        """
         for i in range(self.rows):
             for j in range(self.cols):
                 if self.board[i][j] != 0:
+                    #Update the move list for each piece on the board
                     self.board[i][j].update_valid_moves(self.board)
 
     def draw(self, win, color):
+        """
+        Draws the board and the pieces onto a window
+
+        Arguments:
+            win: The pygame window surface to draw on
+            color (string): The color of the player whose pieces are being drawn
+        """
         if self.last and color == self.turn:
             y, x = self.last[0]
             y1, x1 = self.last[1]
 
-            xx = (4 - x) +round(self.startX + (x * self.rect[2] / 8))
-            yy = 3 + round(self.startY + (y * self.rect[3] / 8))
-            pygame.draw.circle(win, (0,0,255), (xx+32, yy+30), 34, 4)
-            xx1 = (4 - x) + round(self.startX + (x1 * self.rect[2] / 8))
-            yy1 = 3+ round(self.startY + (y1 * self.rect[3] / 8))
-            pygame.draw.circle(win, (0, 0, 255), (xx1 + 32, yy1 + 30), 34, 4)
+            #Draws move circles for previous move
+            xx = (4 - x) +round(WINDOW_MARGIN + (x * WINDOW_SIZE / BOARD_SIZE))
+            yy = 3 + round(WINDOW_MARGIN + (y * WINDOW_SIZE / BOARD_SIZE))
+            pygame.draw.circle(win, (0,0,255), (xx+self.CIRCLE_X_OFFSET, yy+self.CIRCLE_Y_OFFSET), self.MOVE_CIRCLE_RADIUS, self.MOVE_CIRCLE_THICKNESS)
+            xx1 = (4 - x) + round(WINDOW_MARGIN + (x1 * WINDOW_SIZE / BOARD_SIZE))
+            yy1 = 3+ round(WINDOW_MARGIN + (y1 * WINDOW_SIZE / BOARD_SIZE))
+            pygame.draw.circle(win, (0, 0, 255), (xx1 + self.CIRCLE_X_OFFSET, yy1 + self.CIRCLE_Y_OFFSET), self.MOVE_CIRCLE_RADIUS, self.MOVE_CIRCLE_THICKNESS)
 
         s = None
         for i in range(self.rows):
             for j in range(self.cols):
                 if self.board[i][j] != 0:
                     self.board[i][j].draw(win, color)
-                    if self.board[i][j].isSelected:
+                    if self.board[i][j].is_selected:
                         s = (i, j)
 
 
     def get_danger_moves(self, color):
+        """
+        Retrieves all moves that threaten a player of a given color
+
+        Arguments:
+            color (string): The color of the player
+
+        Returns:
+            list of positions that are threatened by opponent pieces
+        """
         danger_moves = []
         for i in range(self.rows):
             for j in range(self.cols):
@@ -114,6 +127,15 @@ class Board:
         return danger_moves
 
     def is_checked(self, color):
+        """
+        Checks if the player's king of the given color is in check
+
+        Arguments:
+            color (string): The color of the king possibly being check
+
+        Returns:
+            True if the player is in check, otherwise False.
+        """
         self.update_moves()
         danger_moves = self.get_danger_moves(color)
         king_pos = (-1, -1)
@@ -129,6 +151,17 @@ class Board:
         return False
 
     def select(self, col, row, color):
+        """
+        Selects a piece on the board and moves it if valid move is made
+
+        Arguments:
+            col (integer): The column of the selected position
+            row (integer): The row of the selected position 
+            color (string): The color of the player making the move
+
+        Returns:
+            True if the move was made successfully, else False.
+        """
         changed = False
         prev = (-1, -1)
         for i in range(self.rows):
@@ -137,7 +170,7 @@ class Board:
                     if self.board[i][j].selected:
                         prev = (i, j)
 
-        # if piece
+        # if piece is empty and there is a previously selected piece
         if self.board[row][col] == 0 and prev!=(-1,-1):
             moves = self.board[prev[0]][prev[1]].move_list
             if (col, row) in moves:
@@ -156,13 +189,14 @@ class Board:
 
                     if self.board[row][col].color == color:
                         self.board[row][col].selected = True
-
+                
                 else:
                     if self.board[row][col].color == color:
-                        #castling
+                        #Logic for castling a rook
                         self.reset_selected()
                         if self.board[prev[0]][prev[1]].moved == False and self.board[prev[0]][prev[1]].rook and self.board[row][col].king and col != prev[1] and prev!=(-1,-1):
                             castle = True
+                            #Castle right
                             if prev[1] < col:
                                 for j in range(prev[1]+1, col):
                                     if self.board[row][j] != 0:
@@ -173,7 +207,7 @@ class Board:
                                     changed = self.move((row,col), (row, 2), color)
                                 if not changed:
                                     self.board[row][col].selected = True
-
+                            #Castle left
                             else:
                                 for j in range(col+1,prev[1]):
                                     if self.board[row][j] != 0:
@@ -197,12 +231,24 @@ class Board:
                 self.reset_selected()
 
     def reset_selected(self):
+        """
+        Deselect all selected pieces on the board
+        """
         for i in range(self.rows):
             for j in range(self.cols):
                 if self.board[i][j] != 0:
                     self.board[i][j].selected = False
 
     def check_mate(self, color):
+        """
+        Checks if the player of the given color is in checkmate.
+
+        Arguments:
+            color (string): The color of the player to check
+
+        Returns:
+            False temporarily as function is not completed
+        """
         '''if self.is_checked(color):
             king = None
             for i in range(self.rows):
@@ -225,27 +271,43 @@ class Board:
         return False
 
     def move(self, start, end, color):
-        checkedBefore = self.is_checked(color)
+        """
+        Move piece from start position to end position
+
+        Arguments:
+            start (list): The starting position
+            end (list): The ending position
+            color (string): The color of the player making the move
+
+        Returns:
+            True if move was successful, else False
+        """
+        
+        checked_before = self.is_checked(color)
         changed = True
-        nBoard = self.board[:]
-        if nBoard[start[0]][start[1]].pawn:
-            nBoard[start[0]][start[1]].first = False
+        n_board = self.board[:]
+        
+        #If the piece is pawn, mark as no longer being the first move so it cannot move two spaces
+        if n_board[start[0]][start[1]].pawn:
+            n_board[start[0]][start[1]].first = False
 
-        nBoard[start[0]][start[1]].change_pos((end[0], end[1]))
-        nBoard[end[0]][end[1]] = nBoard[start[0]][start[1]]
-        nBoard[start[0]][start[1]] = 0
-        self.board = nBoard
+        n_board[start[0]][start[1]].change_pos((end[0], end[1]))
+        n_board[end[0]][end[1]] = n_board[start[0]][start[1]]
+        n_board[start[0]][start[1]] = 0
+        self.board = n_board
 
-        if self.is_checked(color) or (checkedBefore and self.is_checked(color)):
+        #If move made results in check, undo the move
+        if self.is_checked(color) or (checked_before and self.is_checked(color)):
             changed = False
-            nBoard = self.board[:]
-            if nBoard[end[0]][end[1]].pawn:
-                nBoard[end[0]][end[1]].first = True
+            n_board = self.board[:]
+            if n_board[end[0]][end[1]].pawn:
+                n_board[end[0]][end[1]].first = True
 
-            nBoard[end[0]][end[1]].change_pos((start[0], start[1]))
-            nBoard[start[0]][start[1]] = nBoard[end[0]][end[1]]
-            nBoard[end[0]][end[1]] = 0
-            self.board = nBoard
+            #switch positions back
+            n_board[end[0]][end[1]].change_pos((start[0], start[1]))
+            n_board[start[0]][start[1]] = n_board[end[0]][end[1]]
+            n_board[end[0]][end[1]] = 0
+            self.board = n_board
         else:
             self.reset_selected()
 
@@ -253,12 +315,9 @@ class Board:
         if changed:
             self.last = [start, end]
             if self.turn == "w":
-                self.storedTime1 += (time.time() - self.startTime)
+                self.stored_time_one += (time.time() - self.start_time)
             else:
-                self.storedTime2 += (time.time() - self.startTime)
-            self.startTime = time.time()
+                self.stored_time_two += (time.time() - self.start_time)
+            self.start_time = time.time()
 
         return changed
-
-
-

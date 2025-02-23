@@ -1,6 +1,10 @@
 import pygame
 import os
+from board import BOARD_SIZE
+from game import WINDOW_MARGIN, WINDOW_SIZE
+from game import RED, WHITE
 
+#load images for each piece
 b_bishop = pygame.image.load(os.path.join("img", "black_bishop.png"))
 b_king = pygame.image.load(os.path.join("img", "black_king.png"))
 b_knight = pygame.image.load(os.path.join("img", "black_knight.png"))
@@ -21,20 +25,29 @@ w = [w_bishop, w_king, w_knight, w_pawn, w_queen, w_rook]
 B = []
 W = []
 
+PIECE_SIZE = 55
+
 for img in b:
-    B.append(pygame.transform.scale(img, (55, 55)))
+    B.append(pygame.transform.scale(img, (PIECE_SIZE, PIECE_SIZE)))
 
 for img in w:
-    W.append(pygame.transform.scale(img, (55, 55)))
-
+    W.append(pygame.transform.scale(img, (PIECE_SIZE, PIECE_SIZE)))
 
 class Piece:
     img = -1
-    rect = (113, 113, 525, 525)
-    startX = rect[0]
-    startY = rect[1]
+    
+    #Piece highlighting constants
+    HIGHLIGHT_SIZE = 62
+    HIGHLIGHT_THICKNESS = 4
 
     def __init__(self, row, col, color):
+        """
+        Initialize a piece object
+        Args:
+            row (integer): The row the piece is in
+            col (integer): The column the piece is in
+            color (string): The color of the piece
+        """
         self.row = row
         self.col = col
         self.color = color
@@ -43,23 +56,40 @@ class Piece:
         self.king = False
         self.pawn = False
 
-    def isSelected(self):
+    def is_selected(self):
+        """
+        Check if the piece is selected
+
+        Returns:
+            Boolean: True if the piece is selected, False otherwise
+        """
         return self.selected
 
     def update_valid_moves(self, board):
+        """
+        Update the valid moves for the piece
+        Args:
+            board (list): The current board state
+        """
         self.move_list = self.valid_moves(board)
 
     def draw(self, win, color):
+        """
+        Draw the piece on the board
+        Args:
+            win (pygame window): The window to draw the piece on
+            color (string): The color of the piece
+        """
         if self.color == "w":
             drawThis = W[self.img]
         else:
             drawThis = B[self.img]
 
-        x = (4 - self.col) + round(self.startX + (self.col * self.rect[2] / 8))
-        y = 3 + round(self.startY + (self.row * self.rect[3] / 8))
+        x = (4 - self.col) + round(WINDOW_MARGIN + (self.col * WINDOW_SIZE / BOARD_SIZE))
+        y = 3 + round(WINDOW_MARGIN + (self.row * WINDOW_SIZE / BOARD_SIZE))
 
         if self.selected and self.color == color:
-            pygame.draw.rect(win, (255, 0, 0), (x, y, 62, 62), 4)
+            pygame.draw.rect(win, RED, (x, y, self.HIGHLIGHT_SIZE, self.HIGHLIGHT_SIZE), self.HIGHLIGHT_THICKNESS)
 
         win.blit(drawThis, (x, y))
 
@@ -67,261 +97,158 @@ class Piece:
             moves = self.move_list
 
             for move in moves:
-                x = 33 + round(self.startX + (move[0] * self.rect[2] / 8))
-                y = 33 + round(self.startY + (move[1] * self.rect[3] / 8))
-                pygame.draw.circle(win, (255, 0, 0), (x, y), 10)'''
+                x = 33 + round(WINDOW_MARGIN + (move[0] * WINDOW_SIZE / BOARD_SIZE))
+                y = 33 + round(WINDOW_MARGIN + (move[1] * WINDOW_SIZE / BOARD_SIZE))
+                pygame.draw.circle(win, RED, (x, y), 10)'''
 
     def change_pos(self, pos):
+        """
+        Change the position of the piece
+
+        Args:
+            pos (list): The new position of the piece
+        """
         self.row = pos[0]
         self.col = pos[1]
 
     def __str__(self):
         return str(self.col) + " " + str(self.row)
 
+    def generate_moves(self, board, directions):
+        """
+        Generate valid moves for the piece based on given directions
+
+        Args:
+            board (list): The current board state
+            directions (list): List of directions to check for valid moves
+
+        Returns:
+            list: List of valid moves
+        """
+        moves = []
+        # Check each direction for valid moves
+        for direction in directions:
+            di, dj = direction
+            i, j = self.row, self.col
+            
+            # Move in the direction until a piece is encountered
+            while True:
+                i += di
+                j += dj
+                # Check if the move is within the board
+                if 0 <= i < BOARD_SIZE and 0 <= j < BOARD_SIZE:
+                    p = board[i][j]
+                    if p == 0:
+                        moves.append((j, i))
+                    elif p.color != self.color:
+                        moves.append((j, i))
+                        break
+                    else:
+                        break
+                else:
+                    break
+        return moves
+
+
 
 class Bishop(Piece):
     img = 0
 
     def valid_moves(self, board):
-        i = self.row
-        j = self.col
+        """
+        Generate valid moves for the bishop piece
 
-        moves = []
+        Args:
+            board (list): The current board state
 
-        # TOP RIGHT
-        djL = j + 1
-        djR = j - 1
-        for di in range(i - 1, -1, -1):
-            if djL < 8:
-                p = board[di][djL]
-                if p == 0:
-                    moves.append((djL, di))
-                elif p.color != self.color:
-                    moves.append((djL, di))
-                    break
-                else:
-                    break
-            else:
-                break
-
-            djL += 1
-
-        for di in range(i - 1, -1, -1):
-            if djR > -1:
-                p = board[di][djR]
-                if p == 0:
-                    moves.append((djR, di))
-                elif p.color != self.color:
-                    moves.append((djR, di))
-                    break
-                else:
-                    break
-            else:
-                break
-
-            djR -= 1
-
-        # TOP LEFT
-        djL = j + 1
-        djR = j - 1
-        for di in range(i + 1, 8):
-            if djL < 8:
-                p = board[di][djL]
-                if p == 0:
-                    moves.append((djL, di))
-                elif p.color != self.color:
-                    moves.append((djL, di))
-                    break
-                else:
-                    break
-            else:
-                break
-            djL += 1
-        for di in range(i + 1, 8):
-            if djR > -1:
-                p = board[di][djR]
-                if p == 0:
-                    moves.append((djR, di))
-                elif p.color != self.color:
-                    moves.append((djR, di))
-                    break
-                else:
-                    break
-            else:
-                break
-
-            djR -= 1
-
-        return moves
+        Returns:
+            list: List of valid moves
+        """
+        directions = [(-1, 1), (-1, -1), (1, 1), (1, -1)]
+        return self.generate_moves(board, directions)
 
 
 class King(Piece):
     img = 1
 
     def __init__(self, row, col, color):
+        """
+        Initialize a king piece
+
+        Args:
+            row (integer): The row the piece is in
+            col (integer): The column the piece is in
+            color (string): The color of the piece
+        """
         super().__init__(row, col, color)
         self.king = True
 
     def valid_moves(self, board):
-        i = self.row
-        j = self.col
+        """
+        Generate valid moves for the king piece
 
-        moves = []
+        Args:
+            board (list): The current board state
 
-        if i > 0:
-            # TOP LEFT
-            if j > 0:
-                p = board[i - 1][j - 1]
-                if p == 0:
-                    moves.append((j - 1, i - 1,))
-                elif p.color != self.color:
-                    moves.append((j - 1, i - 1,))
-
-            # TOP MIDDLE
-            p = board[i - 1][j]
-            if p == 0:
-                moves.append((j, i - 1))
-            elif p.color != self.color:
-                moves.append((j, i - 1))
-
-            # TOP RIGHT
-            if j < 7:
-                p = board[i - 1][j + 1]
-                if p == 0:
-                    moves.append((j + 1, i - 1,))
-                elif p.color != self.color:
-                    moves.append((j + 1, i - 1,))
-
-        if i < 7:
-            # BOTTOM LEFT
-            if j > 0:
-                p = board[i + 1][j - 1]
-                if p == 0:
-                    moves.append((j - 1, i + 1,))
-                elif p.color != self.color:
-                    moves.append((j - 1, i + 1,))
-
-            # BOTTOM MIDDLE
-            p = board[i + 1][j]
-            if p == 0:
-                moves.append((j, i + 1))
-            elif p.color != self.color:
-                moves.append((j, i + 1))
-
-            # BOTTOM RIGHT
-            if j < 7:
-                p = board[i + 1][j + 1]
-                if p == 0:
-                    moves.append((j + 1, i + 1))
-                elif p.color != self.color:
-                    moves.append((j + 1, i + 1))
-
-        # MIDDLE LEFT
-        if j > 0:
-            p = board[i][j - 1]
-            if p == 0:
-                moves.append((j - 1, i))
-            elif p.color != self.color:
-                moves.append((j - 1, i))
-
-        # MIDDLE RIGHT
-        if j < 7:
-            p = board[i][j + 1]
-            if p == 0:
-                moves.append((j + 1, i))
-            elif p.color != self.color:
-                moves.append((j + 1, i))
-
-        return moves
+        Returns:
+            list: List of valid moves
+        """
+        directions = [(-1, -1), (-1, 0), (-1, 1), (0, -1), (0, 1), (1, -1), (1, 0), (1, 1)]
+        return self.generate_moves(board, directions)
 
 
 class Knight(Piece):
+    
     img = 2
 
     def valid_moves(self, board):
-        i = self.row
-        j = self.col
+        """
+        Generate valid moves for the knight piece
 
-        moves = []
+        Args:
+            board (list): The current board state
 
-        # DOWN LEFT
-        if i < 6 and j > 0:
-            p = board[i + 2][j - 1]
-            if p == 0:
-                moves.append((j - 1, i + 2))
-            elif p.color != self.color:
-                moves.append((j - 1, i + 2))
-
-        # UP LEFT
-        if i > 1 and j > 0:
-            p = board[i - 2][j - 1]
-            if p == 0:
-                moves.append((j - 1, i - 2))
-            elif p.color != self.color:
-                moves.append((j - 1, i - 2))
-
-        # DOWN RIGHT
-        if i < 6 and j < 7:
-            p = board[i + 2][j + 1]
-            if p == 0:
-                moves.append((j + 1, i + 2))
-            elif p.color != self.color:
-                moves.append((j + 1, i + 2))
-
-        # UP RIGHT
-        if i > 1 and j < 7:
-            p = board[i - 2][j + 1]
-            if p == 0:
-                moves.append((j + 1, i - 2))
-            elif p.color != self.color:
-                moves.append((j + 1, i - 2))
-
-        if i > 0 and j > 1:
-            p = board[i - 1][j - 2]
-            if p == 0:
-                moves.append((j - 2, i - 1))
-            elif p.color != self.color:
-                moves.append((j - 2, i - 1))
-
-        if i > 0 and j < 6:
-            p = board[i - 1][j + 2]
-            if p == 0:
-                moves.append((j + 2, i - 1))
-            elif p.color != self.color:
-                moves.append((j + 2, i - 1))
-
-        if i < 7 and j > 1:
-            p = board[i + 1][j - 2]
-            if p == 0:
-                moves.append((j - 2, i + 1))
-            elif p.color != self.color:
-                moves.append((j - 2, i + 1))
-
-        if i < 7 and j < 6:
-            p = board[i + 1][j + 2]
-            if p == 0:
-                moves.append((j + 2, i + 1))
-            elif p.color != self.color:
-                moves.append((j + 2, i + 1))
-
-        return moves
+        Returns:
+            list: List of valid moves
+        """
+        directions = [(-2, -1), (-2, 1), (-1, -2), (-1, 2), (1, -2), (1, 2), (2, -1), (2, 1)]
+        return self.generate_moves(board, directions)
 
 
 class Pawn(Piece):
     img = 3
 
     def __init__(self, row, col, color):
+        """
+        Initialize a pawn piece
+
+        Args:
+            row (integer): The row the piece is in
+            col (integer): The column the piece is in
+            color (string): The color of the piece
+        """
         super().__init__(row, col, color)
         self.first = True
         self.queen = False
         self.pawn = True
 
     def valid_moves(self, board):
+        """
+        Generate valid moves for the pawn piece
+
+        Args:
+            board (list): The current board state
+
+        Returns:
+            list: List of valid moves
+        """
         i = self.row
         j = self.col
 
         moves = []
+        # Check for valid moves based on the color of the piece
         try:
+            # BLACK
             if self.color == "b":
                 if i < 7:
                     p = board[i + 1][j]
@@ -331,52 +258,40 @@ class Pawn(Piece):
                     # DIAGONAL
                     if j < 7:
                         p = board[i + 1][j + 1]
-                        if p != 0:
-                            if p.color != self.color:
-                                moves.append((j + 1, i + 1))
+                        if p != 0 and p.color != self.color:
+                            moves.append((j + 1, i + 1))
 
                     if j > 0:
                         p = board[i + 1][j - 1]
-                        if p != 0:
-                            if p.color != self.color:
-                                moves.append((j - 1, i + 1))
+                        if p != 0 and p.color != self.color:
+                            moves.append((j - 1, i + 1))
 
-                if self.first:
-                    if i < 6:
-                        p = board[i + 2][j]
-                        if p == 0:
-                            if board[i + 1][j] == 0:
-                                moves.append((j, i + 2))
-                        elif p.color != self.color:
-                            moves.append((j, i + 2))
+                if self.first and i < 6:
+                    p = board[i + 2][j]
+                    if p == 0 and board[i + 1][j] == 0:
+                        moves.append((j, i + 2))
             # WHITE
-            else:
-
+            else:  
                 if i > 0:
                     p = board[i - 1][j]
                     if p == 0:
                         moves.append((j, i - 1))
 
-                if j < 7:
-                    p = board[i - 1][j + 1]
-                    if p != 0:
-                        if p.color != self.color:
+                    # DIAGONAL
+                    if j < 7:
+                        p = board[i - 1][j + 1]
+                        if p != 0 and p.color != self.color:
                             moves.append((j + 1, i - 1))
 
-                if j > 0:
-                    p = board[i - 1][j - 1]
-                    if p != 0:
-                        if p.color != self.color:
+                    if j > 0:
+                        p = board[i - 1][j - 1]
+                        if p != 0 and p.color != self.color:
                             moves.append((j - 1, i - 1))
 
-                if self.first:
-                    if i > 1:
-                        p = board[i - 2][j]
-                        if p == 0:
-                            if board[i - 1][j] == 0:
-                                moves.append((j, i - 2))
-                        elif p.color != self.color:
-                            moves.append((j, i - 2))
+                if self.first and i > 1:
+                    p = board[i - 2][j]
+                    if p == 0 and board[i - 1][j] == 0:
+                        moves.append((j, i - 2))
         except:
             pass
 
@@ -387,166 +302,31 @@ class Queen(Piece):
     img = 4
 
     def valid_moves(self, board):
-        i = self.row
-        j = self.col
+        """
+        Generate valid moves for the queen piece
 
-        moves = []
+        Args:
+            board (list): The current board state
 
-        # TOP RIGHT
-        djL = j + 1
-        djR = j - 1
-        for di in range(i - 1, -1, -1):
-            if djL < 8:
-                p = board[di][djL]
-                if p == 0:
-                    moves.append((djL, di))
-                elif p.color != self.color:
-                    moves.append((djL, di))
-                    break
-                else:
-                    djL = 9
-
-            djL += 1
-
-        for di in range(i - 1, -1, -1):
-            if djR > -1:
-                p = board[di][djR]
-                if p == 0:
-                    moves.append((djR, di))
-                elif p.color != self.color:
-                    moves.append((djR, di))
-                    break
-                else:
-                    djR = -1
-
-            djR -= 1
-
-        # TOP LEFT
-        djL = j + 1
-        djR = j - 1
-        for di in range(i + 1, 8):
-            if djL < 8:
-                p = board[di][djL]
-                if p == 0:
-                    moves.append((djL, di))
-                elif p.color != self.color:
-                    moves.append((djL, di))
-                    break
-                else:
-                    djL = 9
-            djL += 1
-        for di in range(i + 1, 8):
-            if djR > -1:
-                p = board[di][djR]
-                if p == 0:
-                    moves.append((djR, di))
-                elif p.color != self.color:
-                    moves.append((djR, di))
-                    break
-                else:
-                    djR = -1
-
-            djR -= 1
-
-        # UP
-        for x in range(i - 1, -1, -1):
-            p = board[x][j]
-            if p == 0:
-                moves.append((j, x))
-            elif p.color != self.color:
-                moves.append((j, x))
-                break
-            else:
-                break
-
-        # DOWN
-        for x in range(i + 1, 8, 1):
-            p = board[x][j]
-            if p == 0:
-                moves.append((j, x))
-            elif p.color != self.color:
-                moves.append((j, x))
-                break
-            else:
-                break
-
-        # LEFT
-        for x in range(j - 1, -1, -1):
-            p = board[i][x]
-            if p == 0:
-                moves.append((x, i))
-            elif p.color != self.color:
-                moves.append((x, i))
-                break
-            else:
-                break
-
-        # RIGHT
-        for x in range(j + 1, 8, 1):
-            p = board[i][x]
-            if p == 0:
-                moves.append((x, i))
-            elif p.color != self.color:
-                moves.append((x, i))
-                break
-            else:
-                break
-
-        return moves
+        Returns:
+            list: List of valid moves
+        """
+        directions = [(-1, 1), (-1, -1), (1, 1), (1, -1), (-1, 0), (1, 0), (0, -1), (0, 1)]
+        return self.generate_moves(board, directions)
 
 
 class Rook(Piece):
     img = 5
 
     def valid_moves(self, board):
-        i = self.row
-        j = self.col
+        """
+        Generate valid moves for the rook piece
 
-        moves = []
+        Args:
+            board (list): The current board state
 
-        # UP
-        for x in range(i - 1, -1, -1):
-            p = board[x][j]
-            if p == 0:
-                moves.append((j, x))
-            elif p.color != self.color:
-                moves.append((j, x))
-                break
-            else:
-                break
-
-        # DOWN
-        for x in range(i + 1, 8, 1):
-            p = board[x][j]
-            if p == 0:
-                moves.append((j, x))
-            elif p.color != self.color:
-                moves.append((j, x))
-                break
-            else:
-                break
-
-        # LEFT
-        for x in range(j - 1, -1, -1):
-            p = board[i][x]
-            if p == 0:
-                moves.append((x, i))
-            elif p.color != self.color:
-                moves.append((x, i))
-                break
-            else:
-                break
-
-        # RIGHT
-        for x in range(j + 1, 8, 1):
-            p = board[i][x]
-            if p == 0:
-                moves.append((x, i))
-            elif p.color != self.color:
-                moves.append((x, i))
-                break
-            else:
-                break
-
-        return moves
-
+        Returns:
+            list: List of valid moves
+        """
+        directions = [(-1, 0), (1, 0), (0, -1), (0, 1)]
+        return self.generate_moves(board, directions)
